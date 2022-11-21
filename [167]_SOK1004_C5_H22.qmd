@@ -1,0 +1,134 @@
+# Instruksjoner
+
+Denne oppgaven skal løses interaktivt i RStudio ved å legge inn egen kode og kommentarer. Det ferdige dokumentet lagres med kandidatnummeret som navn `[kandidatnummer]_SOK1004_C5_H22.qmd` og lastes opp på deres GitHub-side. Hvis du har kandidatnummer 43, så vil filen hete `43_SOK1004_C5_H22.qmd`. Påse at koden kjører og at dere kan eksportere besvarelsen til pdf. Lever så lenken til GitHub-repositoriumet i Canvas.
+
+# Bakgrunn, læringsmål
+
+I [seminar 3, oppgave 3](https://uit-sok-1004-h22.github.io/seminar/s3.html) leste dere [kapittel 1 i NOU 2015:1](https://uit-sok-1004-h22.github.io/seminar/NOU%202015_%201%20kap%201%20(prod1).pdf) "Produktivitet - grunnlag for vekst og velferd." I denne oppgaven skal vi oppdatere tall brukt i analysen. Gjennom arbeidet vil dere repetere de grunnleggende ferdighetene i bruk av API, `tidyverse` og `ggplot` som vi har arbeidet med gjennom kurset. Dere vil også få anledning til å reflektere rundt sammenhengene i nasjonalregnskapet og å grave litt i statistikkbanken hos SSB.
+
+# Last inn pakker
+
+```{r}
+# output | false
+rm(list=ls()) 
+library(tidyverse)
+library(rjstat)
+library(httr)
+```
+
+# Oppgave I: Timeverksproduktivitet i markedsrettede fastlandsnæringer
+
+Reproduser en oppdatert versjon av Figur 1.1 "Timeverksproduktivitet, markedsrettede fastlandsnæringer" i rapporten. Her er produktivitet målt som bruttoprodukt i markedsrettet produksjon i Fastlands-Norge per timeverk, utenom bolig.
+
+## Oppgave Ia
+
+Hvorfor trekker Produktivitetskommisjon fra produksjonen av boligtjenester, offentlig etterspørsel, og inntekter fra olje og gass når de beregner produktivitet?
+
+*\[Svar på oppgave Ia her\]*
+
+*Ved å fjærne de produksjonene så blir sammenligninger vi gjør mellom Norge og andre land mere presist, land som kanskje ikke har like stor inntekts skilde som Norge(Olje og gass).*
+
+## Oppgave Ib
+
+Skriv kode som bruker en JSON-spørring til å lage en oppdatert versjon av figuren, med observasjoner fra 1996 til 2021. Beregn gjennomsnittlig årlig endring for perioden 1996 - 2005 og, 2005-2013, og 2006 - 2021. Står konklusjonen i rapporten seg?
+
+**Merknad.** Det er tidvis store revisjoner i nasjonalregnskapet. Du må regne med at individuelle tall på årlig endring kan avvike en god del, opp til et halvt prosentpoeng, mens de gjennomsnittlige veksttallene burde avvike noe mindre.
+
+**Tips:** Du henter data på timeverk og bruttoprodukt fra henholdsvis tabell 09174 og 09170.
+
+```{r}
+
+# løs oppgave 1b her
+
+url_1 <- "https://data.ssb.no/api/v0/no/table/09174/"
+query_1 <- '{
+  "query": [
+    {
+      "code": "NACE",
+      "selection": {
+        "filter": "vs:NRNaeringPubAgg",
+        "values": [
+          "nr23fn"
+        ]
+      }
+    },
+    {
+      "code": "ContentsCode",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "BruttoprodTimev"
+        ]
+      }
+    },
+    {
+      "code": "Tid",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "1996",
+          "1997",
+          "1998",
+          "1999",
+          "2000",
+          "2001",
+          "2002",
+          "2003",
+          "2004",
+          "2005",
+          "2006",
+          "2007",
+          "2008",
+          "2009",
+          "2010",
+          "2011",
+          "2012",
+          "2013",
+          "2014",
+          "2015",
+          "2016",
+          "2017",
+          "2018",
+          "2019",
+          "2020",
+          "2021"
+        ]
+      }
+    }
+  ],
+  "response": {
+    "format": "json-stat2"
+  }
+}'
+
+hent_indeks.tmp_1 <- url_1 %>%
+  POST(body = query_1, encode = "json")
+
+df_1 <-  hent_indeks.tmp_1 %>%
+  content("text") %>%
+  fromJSONstat() %>%
+  as_tibble()
+
+df_1 <- df_1 %>%
+  rename("verdi" = "value") %>%
+  rename("variabel" = "statistikkvariabel")
+
+figur_1 <- ggplot(data = df_1, aes(år, verdi)) +
+  geom_bar(stat = "identity", color = "#4169E1", fill = "#4169E1") +
+  labs(x = "", y = "", title = "Timeverksproduktivitet, markedsrettede fastlandsnæring") +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme_bw()
+
+figur_2 <- figur_1 +
+  geom_segment(aes(x = 1, y = 3.15, xend = 10, yend = 3.15)) +
+  annotate("text", x = 3.5, y = 3.45, label = "3.15") +
+  geom_segment(aes(x = 10, y = 1.34, xend = 18, yend = 1.34)) +
+  annotate("text", x = 13, y = 1.64, label = "1.34") +
+  geom_segment(aes(x = 11, y = 1.01, xend = 26, yend = 1.01)) +
+  annotate("text", x = 20, y = 1.31, label = "1.01")
+
+figur_2
+
+
+Hvis vi sammenligner den oppdaterte figuren med den gamle figuren fra NOU, kan vi se at det har vært en gjennomsnittlig økning i periodene  da det er litt høyere i den oppdaterte figuren. I begge figurene har vi en generell økning fra hvert år med unntak av i 2008, dette kan skyldes finanskrisen. 
+```
